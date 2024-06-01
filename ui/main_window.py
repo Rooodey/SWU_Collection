@@ -2,11 +2,9 @@ import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, \
     QHBoxLayout, QLineEdit, QDialog, QFormLayout, QCheckBox, QLabel, QComboBox
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
-from Cardmarket.services.sw_query import SWQueryService
+from SWU_Collection.controllers import SWQueryService
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-
 
 class DatabaseApp(QWidget):
     def __init__(self):

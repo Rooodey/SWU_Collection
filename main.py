@@ -1,8 +1,12 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from config import DATABASE_URL
+import sys, os
+from PyQt6.QtWidgets import QApplication
+from SWU_Collection.models import init_db
+from SWU_Collection.ui import DatabaseApp
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+
+init_db()
+
+app = QApplication(sys.argv)
+window = DatabaseApp()
+window.show()
+sys.exit(app.exec())

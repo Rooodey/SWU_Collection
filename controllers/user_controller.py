@@ -1,12 +1,9 @@
 import json
 import unicodedata
 from datetime import date
-
 from sqlalchemy import desc
-
-from Cardmarket.database.init_db import get_session
-from Cardmarket.database.models import SWCards, LowestPrice, PriceTrend, Avg1Day, Avg7Days, Avg30Days, UpdateStatus
-from Cardmarket.services.crawler import *
+from SWU_Collection.models import Session, SWCards, LowestPrice, PriceTrend, Avg1Day, Avg7Days, Avg30Days, UpdateStatus
+from SWU_Collection.crawler.main import *
 
 
 class SWQueryService:
@@ -14,7 +11,7 @@ class SWQueryService:
 
     def __init__(self):
         """Initialisiert die Datenbankverbindung."""
-        self.session = get_session()
+        self.session = Session()
 
     def set_sw_card(self, sw_set, number, variant, foil, name, german_name, subtitle, german_subtitle,
                     rarity, type, card_url, image_url):
