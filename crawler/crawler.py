@@ -57,7 +57,7 @@ def get_price_from_dt(dt, price_name):
     return float(cleaned_price_str)
 
 @error_handling
-def get_german_price_from_url(scraper, url):
+def get_german_name_from_url(scraper, url):
     response = scraper.get(url, timeout=5)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -70,5 +70,5 @@ def get_german_price_from_url(scraper, url):
     return tuple(h1_list)
 
 if __name__ == "__main__":
-    test = get_german_price_from_url("https://www.cardmarket.com/de/StarWarsUnlimited/Products/Singles/Spark-of-Rebellion/Admiral-Ackbar-Brilliant-Strategist?isFoil=Y")
+    test = get_german_name_from_url("https://www.cardmarket.com/de/StarWarsUnlimited/Products/Singles/Spark-of-Rebellion/Admiral-Ackbar-Brilliant-Strategist?isFoil=Y")
     print(test)

@@ -2,9 +2,10 @@ import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, \
     QHBoxLayout, QLineEdit, QDialog, QFormLayout, QCheckBox, QLabel, QComboBox
 from PyQt6.QtCore import Qt
-from SWU_Collection.controllers import SWQueryService
+from SWU_Collection.services import CardService, PriceService
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
 
 class DatabaseApp(QWidget):
     def __init__(self):
@@ -14,9 +15,11 @@ class DatabaseApp(QWidget):
         self.setWindowTitle('SW-Unlimited Database')
         self.setGeometry(100, 100, 800, 600)
         self.table = QTableWidget()
-        self.service = SWQueryService()
+        self.card_service = CardService()
+        self.price_service = PriceService()
 
         self.init_ui()
+        self.show_data()
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -68,10 +71,6 @@ class DatabaseApp(QWidget):
 
         button_layout.addStretch(1)
 
-        btn_show_data = QPushButton('Show Data')
-        btn_show_data.clicked.connect(self.show_data)
-        button_layout.addWidget(btn_show_data)
-
         btn_add_card = QPushButton('Add Card')
         btn_add_card.clicked.connect(self.add_card)
         button_layout.addWidget(btn_add_card)
@@ -117,16 +116,16 @@ class DatabaseApp(QWidget):
             variant_matches = (selected_variant == "Alle Varianten" or variant_item.text() == selected_variant)
             foil_matches = (selected_foil == "Foil & Non-foil" or foil_item.text() == selected_foil)
             rarity_matches = (selected_rarity == "Alle Seltenheiten" or rarity_item.text() == selected_rarity)
-            owned_matches =  (selected_owned == "Alle Karten" or (int(amount_item.text()) > 0 and selected_owned == "Eigene Karten"))
+            owned_matches = (selected_owned == "Alle Karten" or (
+                        int(amount_item.text()) > 0 and selected_owned == "Eigene Karten"))
 
             if name_matches and set_matches and variant_matches and foil_matches and rarity_matches and owned_matches:
                 self.table.setRowHidden(row, False)
             else:
                 self.table.setRowHidden(row, True)
 
-
     def show_data(self):
-        cards = self.service.get_all_sw_cards()
+        cards = self.card_service.get_all_sw_cards()
         if not cards:
             print("No cards found!")
             return
@@ -151,7 +150,8 @@ class DatabaseApp(QWidget):
             link_label.setText(f'<a href="{card.card_url}">Link</a>')
             link_label.setOpenExternalLinks(True)
             self.table.setCellWidget(row_position, 9, link_label)
-            self.table.setItem(row_position, 10, QTableWidgetItem(self.service.get_latest_avg_7_price(card)))
+            self.table.setItem(row_position, 10, QTableWidgetItem(
+                str(self.price_service.get_latest_avg_7_price(card)) + "€"))
             self.table.setItem(row_position, 11, QTableWidgetItem(str(card.amount)))
             btn_details = QPushButton('Details')
             btn_details.setProperty('id', card.id)
@@ -160,15 +160,14 @@ class DatabaseApp(QWidget):
             row_position += 1
         self.table.blockSignals(False)
         self.table.resizeColumnsToContents()
-        value = self.service.get_value_of_owned_cards()
+        value = self.card_service.get_value_of_owned_cards()
         self.card_value.setText(f"Kartenwert: {value}€")
 
     def show_details(self):
         button = self.sender()
-        card = self.service.get_sw_card_by_id(button.property('id'))
+        card = self.card_service.get_sw_card_by_id(button.property('id'))
         dialog = CardDetailsDialog(card)
         dialog.exec()
-
 
     def add_card(self):
         dialog = InputDialog()
@@ -187,16 +186,17 @@ class DatabaseApp(QWidget):
             new_amount = item.text()
             id_item = self.table.item(item.row(), 0)
             id_value = id_item.data(Qt.ItemDataRole.UserRole)
-            self.service.update_amount_by_id(id_value, new_amount)
+            self.card_service.update_amount_by_id(id_value, new_amount)
             print(f"Updated id {id_value} with amount: {new_amount}")
-            value = self.service.get_value_of_owned_cards()
+            value = self.card_service.get_value_of_owned_cards()
             self.card_value.setText(f"Kartenwert: {value}€")
+
 
 class CardDetailsDialog(QDialog):
     def __init__(self, card):
         super().__init__()
         self.setWindowTitle("Kartendetails")
-        self.service = SWQueryService()
+        self.price_service = PriceService()
         layout = QVBoxLayout()
 
         # Add labels for card details
@@ -207,8 +207,8 @@ class CardDetailsDialog(QDialog):
         layout.addWidget(QLabel(f"Variante: {card.variant}"))
         layout.addWidget(QLabel(f"Foil: {'Ja' if card.foil else 'Nein'}"))
         layout.addWidget(QLabel(f"Seltenheit: {card.rarity}"))
-        layout.addWidget(QLabel(f"ab: {self.service.get_lowest_price(card)}"))
-        layout.addWidget(QLabel(f"7-Tage Durchschnittspreis: {self.service.get_latest_avg_7_price(card)}"))
+        layout.addWidget(QLabel(f"ab: {self.price_service.get_lowest_price(card)}€"))
+        layout.addWidget(QLabel(f"7-Tage Durchschnittspreis: {self.price_service.get_latest_avg_7_price(card)}€"))
         layout.addWidget(QLabel(f"Anzahl: {card.amount}"))
 
         price_history = {price.date: float(price.price) for price in card.avg_7_days}
@@ -232,6 +232,7 @@ class CardDetailsDialog(QDialog):
         layout.addWidget(canvas)
 
         self.setLayout(layout)
+
 
 class InputDialog(QDialog):
     def __init__(self):
