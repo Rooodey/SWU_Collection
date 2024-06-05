@@ -1,7 +1,7 @@
 import sys, os
 from PyQt6.QtWidgets import QApplication
-from SWU_Collection.models import init_db
-from SWU_Collection.ui import DatabaseApp
+from models import init_db
+from ui import DatabaseApp
 
 
 init_db()

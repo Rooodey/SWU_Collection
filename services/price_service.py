@@ -1,5 +1,5 @@
 from sqlalchemy import desc
-from SWU_Collection.models import Session, LowestPrice, Avg7Days
+from models import Session, LowestPrice, Avg7Days
 
 
 class PriceService:

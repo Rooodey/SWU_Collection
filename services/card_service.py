@@ -1,4 +1,4 @@
-from SWU_Collection.models import Session, SWCards
+from models import Session, SWCards
 from .price_service import PriceService
 
 
