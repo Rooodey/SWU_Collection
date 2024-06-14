@@ -1,8 +1,8 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QPushButton, \
-    QHBoxLayout, QLineEdit, QDialog, QFormLayout, QCheckBox, QLabel, QComboBox
+    QHBoxLayout, QLineEdit, QDialog, QFormLayout, QCheckBox, QLabel, QComboBox, QDialogButtonBox
 from PyQt6.QtCore import Qt
-from services import CardService, PriceService
+from services import CardService, PriceService, UserService
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
@@ -17,6 +17,7 @@ class DatabaseApp(QWidget):
         self.table = QTableWidget()
         self.card_service = CardService()
         self.price_service = PriceService()
+        self.user_service = UserService()
 
         self.init_ui()
         self.show_data()
@@ -38,6 +39,12 @@ class DatabaseApp(QWidget):
         self.filter_input.textChanged.connect(self.filter_table)
         self.filter_input.setMaximumWidth(200)
         button_layout.addWidget(self.filter_input)
+
+        self.user_filter = QComboBox()
+        user = self.user_service.get_users()
+        self.user_filter.addItems(user)
+        self.user_filter.currentIndexChanged.connect(self.show_data)
+        button_layout.addWidget(self.user_filter)
 
         self.set_filter = QComboBox()
         sets = ["Alle Sets", "SOR"]
@@ -75,9 +82,9 @@ class DatabaseApp(QWidget):
         btn_add_card.clicked.connect(self.add_card)
         button_layout.addWidget(btn_add_card)
 
-        btn_edit = QPushButton('Edit')
-        btn_edit.clicked.connect(self.edit_data)
-        button_layout.addWidget(btn_edit)
+        btn_add_user = QPushButton('Add User')
+        btn_add_user.clicked.connect(self.add_user)
+        button_layout.addWidget(btn_add_user)
 
         btn_delete = QPushButton('Delete')
         btn_delete.clicked.connect(self.delete_data)
@@ -109,7 +116,7 @@ class DatabaseApp(QWidget):
             variant_item = self.table.item(row, 3)
             foil_item = self.table.item(row, 4)
             rarity_item = self.table.item(row, 7)
-            amount_item = self.table.item(row, 11)
+            quantity_item = self.table.item(row, 11)
 
             name_matches = filter_text in name_item.text().lower()
             set_matches = (selected_set == "Alle Sets" or set_item.text() == selected_set)
@@ -117,7 +124,7 @@ class DatabaseApp(QWidget):
             foil_matches = (selected_foil == "Foil & Non-foil" or foil_item.text() == selected_foil)
             rarity_matches = (selected_rarity == "Alle Seltenheiten" or rarity_item.text() == selected_rarity)
             owned_matches = (selected_owned == "Alle Karten" or (
-                        int(amount_item.text()) > 0 and selected_owned == "Eigene Karten"))
+                        int(quantity_item.text()) > 0 and selected_owned == "Eigene Karten"))
 
             if name_matches and set_matches and variant_matches and foil_matches and rarity_matches and owned_matches:
                 self.table.setRowHidden(row, False)
@@ -126,6 +133,7 @@ class DatabaseApp(QWidget):
 
     def show_data(self):
         cards = self.card_service.get_all_sw_cards()
+        selected_user = self.user_filter.currentText()
         if not cards:
             print("No cards found!")
             return
@@ -152,7 +160,12 @@ class DatabaseApp(QWidget):
             self.table.setCellWidget(row_position, 9, link_label)
             self.table.setItem(row_position, 10, QTableWidgetItem(
                 str(self.price_service.get_latest_avg_7_price(card)) + "€"))
-            self.table.setItem(row_position, 11, QTableWidgetItem(str(card.amount)))
+            user_id = self.user_service.get_user_id_by_name(selected_user)
+            if user_id:
+                quantity = self.user_service.get_quantity_of_card(user_id, card.id)
+                self.table.setItem(row_position, 11, QTableWidgetItem(str(quantity)))
+            else:
+                self.table.setItem(row_position, 11, QTableWidgetItem(str(0)))
             btn_details = QPushButton('Details')
             btn_details.setProperty('id', card.id)
             btn_details.clicked.connect(self.show_details)
@@ -160,7 +173,7 @@ class DatabaseApp(QWidget):
             row_position += 1
         self.table.blockSignals(False)
         self.table.resizeColumnsToContents()
-        value = self.card_service.get_value_of_owned_cards()
+        value = self.card_service.get_value_of_owned_cards(selected_user)
         self.card_value.setText(f"Kartenwert: {value}€")
 
     def show_details(self):
@@ -172,10 +185,16 @@ class DatabaseApp(QWidget):
     def add_card(self):
         dialog = InputDialog()
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            pass  #
+            pass
 
-    def edit_data(self):
-        pass
+    def add_user(self):
+        dialog = AddUserDialog()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            username = dialog.get_username()
+            if username.strip():
+                self.user_service.set_user(username)
+                self.user_filter.addItem(username)
+
 
     def delete_data(self):
         pass
@@ -183,12 +202,14 @@ class DatabaseApp(QWidget):
     def update_data(self, item):
         column = item.column()
         if column == 11:
-            new_amount = item.text()
+            selected_user = self.user_filter.currentText()
+            user_id = self.user_service.get_user_id_by_name(selected_user)
+            new_quantity = item.text()
             id_item = self.table.item(item.row(), 0)
             id_value = id_item.data(Qt.ItemDataRole.UserRole)
-            self.card_service.update_amount_by_id(id_value, new_amount)
-            print(f"Updated id {id_value} with amount: {new_amount}")
-            value = self.card_service.get_value_of_owned_cards()
+            self.user_service.update_quantity_by_id(id_value, user_id, new_quantity)
+            print(f"Updated id {id_value} with quantity: {new_quantity}")
+            value = self.card_service.get_value_of_owned_cards(user_id)
             self.card_value.setText(f"Kartenwert: {value}€")
 
 
@@ -209,7 +230,6 @@ class CardDetailsDialog(QDialog):
         layout.addWidget(QLabel(f"Seltenheit: {card.rarity}"))
         layout.addWidget(QLabel(f"ab: {self.price_service.get_lowest_price(card)}€"))
         layout.addWidget(QLabel(f"7-Tage Durchschnittspreis: {self.price_service.get_latest_avg_7_price(card)}€"))
-        layout.addWidget(QLabel(f"Anzahl: {card.amount}"))
 
         price_history = {price.date: float(price.price) for price in card.avg_7_days}
         dates = list(price_history.keys())
@@ -289,6 +309,31 @@ class InputDialog(QDialog):
         data = [line_edit.text() for line_edit in self.inputs]
         print("Eingabedaten:", data)
         self.accept()
+
+
+class AddUserDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Benutzer hinzufügen")
+        layout = QVBoxLayout()
+        self.username_input = QLineEdit(self)
+        self.username_input.setPlaceholderText("Benutzername eingeben")
+        layout.addWidget(self.username_input)
+
+        self.ok_button = QPushButton("OK", self)
+        self.cancel_button = QPushButton("Abbrechen", self)
+        self.ok_button.clicked.connect(self.accept)
+        self.cancel_button.clicked.connect(self.reject)
+
+        button_layout = QVBoxLayout()
+        button_layout.addWidget(self.ok_button)
+        button_layout.addWidget(self.cancel_button)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+    def get_username(self):
+        return self.username_input.text()
 
 
 if __name__ == '__main__':

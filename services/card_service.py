@@ -1,4 +1,4 @@
-from models import Session, SWCards
+from models import Session, SWCards, CardQuantity
 from .price_service import PriceService
 
 
@@ -40,26 +40,18 @@ class CardService:
         card = self.session.query(SWCards).filter_by(id=id).first()
         return card
 
-    def get_value_of_owned_cards(self):
+    def get_value_of_owned_cards(self, user_id):
         cards = self.session.query(SWCards).all()
         total_value = 0
         for card in cards:
             price_service = PriceService()
             latest_avg_7_days_price = price_service.get_latest_avg_7_price(card)
             if latest_avg_7_days_price:
-                total_value += card.amount * latest_avg_7_days_price
+                card_quantity = self.session.query(CardQuantity) \
+                    .filter_by(user_id=user_id, card_id=card.id) \
+                    .first()
+                total_value += card_quantity.quantity * latest_avg_7_days_price
         return total_value
-
-    def update_amount_by_id(self, id, new_amount):
-        card = self.session.query(SWCards).filter_by(id=id).first()
-        card.amount = new_amount
-        try:
-            self.session.commit()
-        except Exception as e:
-            self.session.rollback()
-            print(f"Error: {e}")
-            return False
-        return True
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ class SWCards(Base):
     type = Column(String, nullable=False)
     card_url = Column(String(200))
     image_url = Column(String(200))
-    amount = Column(Integer, default=0)
+    quantities = relationship("CardQuantity", back_populates="card")
     lowest_price = relationship("LowestPrice", back_populates="card")
     price_trend = relationship("PriceTrend", back_populates="card")
     avg_1_day = relationship("Avg1Day", back_populates="card")
